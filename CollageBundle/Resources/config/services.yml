@@ -1,0 +1,7 @@
+parameters:
+#    osu_collage.example.class: OSU\CollageBundle\Example
+
+services:
+#    osu_collage.example:
+#        class: %osu_collage.example.class%
+#        arguments: [@service_id, "plain_value", %parameter%]

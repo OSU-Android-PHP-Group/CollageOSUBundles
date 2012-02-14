@@ -1,0 +1,3 @@
+OSUCollageBundle_homepage:
+    pattern:  /hello/{name}
+    defaults: { _controller: OSUCollageBundle:Default:index }
