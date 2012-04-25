@@ -1,3 +1,7 @@
 OSUCollageBundle_homepage:
     pattern:  /
     defaults: { _controller: OSUCollageBundle:Default:index }
+
+image:
+    type:     rest
+    resource: OSU\CollageBundle\Controller\ImageController
