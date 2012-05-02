@@ -1,6 +1,6 @@
 <?php
 
-namespace OSU\CollageBundle;
+namespace OSU\CollageAPIBundle;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
