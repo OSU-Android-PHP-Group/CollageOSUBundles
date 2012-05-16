@@ -1,0 +1,30 @@
+OSU\CollageAPIBundle\Entity\Image:
+    type: entity
+    table: null
+    fields:
+        id:
+            type: integer
+            id: true
+            generator:
+            strategy: AUTO
+        file_name:
+            type: string
+            length: '255'
+        slug:
+            type: string
+            length: '128'
+            gedmo:
+                slug:
+                    separator: _
+                    style: default
+        image_data:
+            type: bytea
+        date:
+            type: datetime
+            gedmo:
+                timestampable:
+                    on: create
+        user_id:
+            type: integer
+
+    lifecycleCallbacks: {  }
