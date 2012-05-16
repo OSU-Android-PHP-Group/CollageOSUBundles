@@ -8,9 +8,9 @@ use Doctrine\DBAL\Platforms\AbstractPlatform;
  * Bytea datatype for PostgreSQL
  */
 
-class MyType extends Type
+class ByteaType extends Type
 {
-    const BYTEA= 'bytea'; // modify to match your type name
+    const BYTEA = 'bytea'; // modify to match your type name
 
     public function getSqlDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
     {
