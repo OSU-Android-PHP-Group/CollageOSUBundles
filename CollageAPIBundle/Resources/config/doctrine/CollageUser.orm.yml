@@ -1,0 +1,19 @@
+OSU\CollageAPIBundle\Entity\CollageUser:
+  type: entity
+  table: null
+  fields:
+    id:
+      type: integer
+      id: true
+      generator:
+        strategy: AUTO
+    user_name:
+      type: string
+      length: '255'
+    password_hash:
+      type: string
+      length: 255
+    images:
+      type: string
+      length: 255
+  lifecycleCallbacks: {  }

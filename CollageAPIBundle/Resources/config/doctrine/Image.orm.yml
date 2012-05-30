@@ -26,5 +26,12 @@ OSU\CollageAPIBundle\Entity\Image:
                     on: create
         user_id:
             type: integer
+    manyToOne:
+        user_id:
+            targetEntity: ColalgeUser
+            inversedBy: images
+            joinColumn:
+                name: user_id
+                referencedColumnName: id
 
     lifecycleCallbacks: {  }
