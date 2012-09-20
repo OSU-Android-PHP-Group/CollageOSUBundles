@@ -42,7 +42,7 @@ class ImageController extends Controller {
 
     //Pass $arr in as $_FILES['images']
     private function getImageArray($arr) {
-        $result = [];
+        $result = array();
         foreach ($arr['tmp_name'] as $tmp_name) {
             $img = imagecreatefromstring(file_get_contents($tmp_name));
             //$ getimagessizeresult[] = $img;
