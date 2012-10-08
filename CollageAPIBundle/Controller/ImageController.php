@@ -18,19 +18,18 @@ class ImageController extends Controller {
             "success" => true
         );
     }
-
     public function postImageAction() {
         //return array("success" => true);
         ini_set("memory_limit","1024M"); 
         ob_start(); 
         //$imgArray = $this->getImageArray($_FILES['images']);
         //$width = imagesx($imgArray[0]);
-        
-        //$resultImg = $this->compositeSimple($_FILES['images']['tmp_name'], 10);
-        $resultImg = $this->compositeImages($_FILES['images']['tmp_name']);
-        //$resultImg = $this->testPop($_FILES['images']['tmp_name']);
 
-        
+
+        //$resultImg = $this->compositeSimple($_FILES['images']['tmp_name'], 10);
+        //$resultImg = $this->compositeImages($_FILES['images']['tmp_name']);
+        //$resultImg = $this->testPop($_FILES['images']['tmp_name']);
+        $resultImg = $this->compositeWithTree($_FILES['images']['tmp_name']);
 
         imagejpeg($resultImg);
 
@@ -39,6 +38,113 @@ class ImageController extends Controller {
         return new Response($content, 200, array('content-type' => 'image/jpeg'));
 
     } 
+
+    private function Build_Layout_Tree($w, $h, $num_of_el) {
+        $result = array();
+        if ($num_of_el > 1) {
+            $node_type = "box";
+            // set up root
+            $result["width"] = $w;
+            $result["height"] = $h;
+            $result["node_type"] = $node_type;
+
+            //calculate children's width and height
+            $proportion = mt_rand(40, 60)/100;
+            //$proportion = 0.5;
+            if ($w > $h) { // current box is horizontal, divide along width
+                $l_width = floor($w * $proportion);
+                $r_width = $w - $l_width;
+                $l_height = $h;
+                $r_height = $h;
+            } else { // vertical box, divide along height
+                $l_height = floor($h * $proportion);
+                $r_height = $h - $l_height;
+                $l_width = $w;
+                $r_width = $w;
+            }
+
+            //number of element on each side
+            $l_size = ceil($num_of_el / 2);
+            $r_size = $num_of_el - $l_size;
+
+            //build children
+            $result["left"] = $this->Build_Layout_Tree($l_width, $l_height, $l_size);
+            $result["right"] = $this->Build_Layout_Tree($r_width, $r_height, $r_size);
+
+        } else { // leaf node
+            $node_type = "img";
+            $result["width"] = $w;
+            $result["height"] = $h;
+            $result["node_type"] = $node_type;
+            $result["left"] = array();
+            $result["right"] = array();
+        }
+        return $result;
+    }
+
+    /*
+     * Get image, then crop and resize by first scaling the image up or down and cropping a specified area from the center.
+     * string $file_name: path to image
+     * int $w, $h:  target width and height
+     *
+     * return an image
+     */
+    private function getImage($file_name, $target_width, $target_height) {
+        $result = imagecreatetruecolor($target_width, $target_height);
+        list($width, $height) = getimagesize($file_name);
+        $img = imagecreatefromstring(file_get_contents($file_name));
+        $scale = max($target_width/$width, $target_height/$height);
+        imagecopyresampled($result, $img, 0, 0, ($width - $target_width / $scale) / 4, ($height - $target_height / $scale) / 4, $target_width, $target_height, $target_width / $scale, $target_height / $scale);
+
+        return $result;
+    }
+
+    private function Draw_Collage($tree, &$image_array, &$canvas, $startx, $starty)
+    {
+        if ($tree["node_type"] == "box") {
+            // Horizontal
+            if ($tree["width"] > $tree["height"]) {
+                $this->Draw_Collage($tree["left"], $image_array, $canvas, $startx, $starty);
+                $this->Draw_Collage($tree["right"], $image_array, $canvas, $startx + $tree["left"]["width"], $starty);
+            } else {
+                // Vertical
+                $this->Draw_Collage($tree["left"], $image_array, $canvas, $startx, $starty);
+                $this->Draw_Collage($tree["right"], $image_array, $canvas, $startx, $starty + $tree["left"]["height"]);
+            }
+        } else { // image
+            $current_img = $this->getImage(array_pop($image_array), $tree["width"], $tree["height"]);
+            $white = imagecolorallocate($current_img, 255, 255, 255);
+            $gray = imagecolorallocate($current_img, 150, 150, 150);
+
+            //white border
+            imagesetthickness($current_img, 6);
+            imageline($current_img, 0, 3, imagesx($current_img), 3,$white); // top border
+            imageline($current_img, 3, 0, 3, imagesy($current_img),$white); // left border
+
+            imageline($current_img, 0, imagesy($current_img)-3, imagesx($current_img), imagesy($current_img)-3,$white); // bottom border
+            imageline($current_img, imagesx($current_img) - 3, 0, imagesx($current_img) - 3, imagesy($current_img),$white); // right border
+
+            //grey border
+            imagesetthickness($current_img, 1);
+            imagerectangle($current_img, 6, 6, imagesx($current_img) - 6, imagesy($current_img) - 6, $gray);
+
+            imagecopy($canvas, $current_img, $startx, $starty, 0, 0, imagesx($current_img), imagesy($current_img));
+
+            //border
+        }
+    }
+
+    private function compositeWithTree($file_array, $w = 1600, $h = 900)
+    {
+        shuffle($file_array);
+        $tree = $this->Build_Layout_Tree($w, $h, count($file_array));
+        $image = imagecreatetruecolor($w, $h);
+        $this->Draw_Collage($tree, $file_array, $image, 0, 0);
+
+        return $image;
+    }
+
+    // OLD function ======================
 
     //Pass $arr in as $_FILES['images']
     private function getImageArray($arr) {
