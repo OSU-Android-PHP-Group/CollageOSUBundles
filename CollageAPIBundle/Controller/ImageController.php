@@ -35,8 +35,27 @@ class ImageController extends Controller {
         //$resultImg = $this->compositeSimple($_FILES['images']['tmp_name'], 10);
         //$resultImg = $this->compositeImages($_FILES['images']['tmp_name']);
         //$resultImg = $this->testPop($_FILES['images']['tmp_name']);
-        $resultImg = $this->compositeWithTree($_FILES['images']['tmp_name']);
+        try {
+            if (!(array_key_exists('images', $_FILES)) || (in_array( "", $_FILES['images']['tmp_name'])))
+            {
+                throw new \Exception ("There was some problems uploading images.");
+            }
 
+            // build $image_array
+            $image_array = array();
+            for ($i = 0; $i < count($_FILES['images']['tmp_name']); $i++) {
+                $image_array[$i] = array(
+                    'tmp_name' => $_FILES['images']['tmp_name'][$i],
+                    'name' => $_FILES['images']['name'][$i]
+                    );
+            }
+
+            $resultImg = $this->compositeWithTree($image_array);
+        } catch (\Exception $e){
+            return new Response($e->getMessage(), 400, array('content-type' => 'text/html'));
+        }
+
+        ob_start();
         imagejpeg($resultImg);
 
         $content = ob_get_contents(); 
@@ -96,16 +115,24 @@ class ImageController extends Controller {
      * return an image
      */
     private function getImage($file_name, $target_width, $target_height) {
-        $result = imagecreatetruecolor($target_width, $target_height);
+
+        try {
+            $img = imagecreatefromstring(file_get_contents($file_name));
+        } catch (\Exception $e) {
+            return false;
+        }
+
         list($width, $height) = getimagesize($file_name);
-        $img = imagecreatefromstring(file_get_contents($file_name));
+        $result = imagecreatetruecolor($target_width, $target_height);
+
         $scale = max($target_width/$width, $target_height/$height);
-        imagecopyresampled($result, $img, 0, 0, ($width - $target_width / $scale) / 4, ($height - $target_height / $scale) / 4, $target_width, $target_height, $target_width / $scale, $target_height / $scale);
+        imagecopyresampled($result, $img, 0, 0, ($width - $target_width / $scale) / 2, ($height - $target_height / $scale) / 4, $target_width, $target_height, $target_width / $scale, $target_height / $scale);
 
         return $result;
     }
 
-    private function Draw_Collage($tree, &$image_array, &$canvas, $startx, $starty)
+    // image_array is an array of [tmp_name, name]
+    private function Draw_Collage($tree, &$image_array, &$canvas, $startx, $starty, $border = 3)
     {
         if ($tree["node_type"] == "box") {
             // Horizontal
@@ -118,21 +145,27 @@ class ImageController extends Controller {
                 $this->Draw_Collage($tree["right"], $image_array, $canvas, $startx, $starty + $tree["left"]["height"]);
             }
         } else { // image
-            $current_img = $this->getImage(array_pop($image_array), $tree["width"], $tree["height"]);
+            $pair= array_pop($image_array);
+            $path = $pair['tmp_name'];
+            $name = $pair['name'];
+            $current_img = $this->getImage($path, $tree["width"], $tree["height"]);
+            if ($current_img == false) {
+                throw new \Exception("Image \"" . $name . "\" cannot be loaded.");
+            }
             $white = imagecolorallocate($current_img, 255, 255, 255);
             $gray = imagecolorallocate($current_img, 150, 150, 150);
 
             //white border
-            imagesetthickness($current_img, 6);
-            imageline($current_img, 0, 3, imagesx($current_img), 3,$white); // top border
-            imageline($current_img, 3, 0, 3, imagesy($current_img),$white); // left border
+            imagesetthickness($current_img, $border * 2);
+            imageline($current_img, 0, 0, imagesx($current_img), 0,$white); // top border
+            imageline($current_img, 0, 0, 0, imagesy($current_img),$white); // left border
 
-            imageline($current_img, 0, imagesy($current_img)-3, imagesx($current_img), imagesy($current_img)-3,$white); // bottom border
-            imageline($current_img, imagesx($current_img) - 3, 0, imagesx($current_img) - 3, imagesy($current_img),$white); // right border
+            imageline($current_img, 0, imagesy($current_img), imagesx($current_img), imagesy($current_img),$white); // bottom border
+            imageline($current_img, imagesx($current_img), 0, imagesx($current_img), imagesy($current_img),$white); // right border
 
             //grey border
             imagesetthickness($current_img, 1);
-            imagerectangle($current_img, 6, 6, imagesx($current_img) - 6, imagesy($current_img) - 6, $gray);
+            imagerectangle($current_img, $border, $border, imagesx($current_img) - $border, imagesy($current_img) - $border, $gray);
 
             imagecopy($canvas, $current_img, $startx, $starty, 0, 0, imagesx($current_img), imagesy($current_img));
 
