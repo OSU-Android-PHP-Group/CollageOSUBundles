@@ -18,10 +18,16 @@ class ImageController extends Controller {
             "success" => true
         );
     }
+
+    public function getTestAction() {
+        $proto = !empty($_SERVER['HTTPS']) ? "https" : "http";
+        $host = $proto . '://' . $_SERVER['HTTP_HOST'];
+        $content = $this->renderView('OSUCollageAPIBundle:Image:post.html.twig', array('host' => $host));
+        return new Response($content, 200, array('content-type' => 'text/html'));
+    }
+
     public function postImageAction() {
         //return array("success" => true);
-        ini_set("memory_limit","1024M"); 
-        ob_start(); 
         //$imgArray = $this->getImageArray($_FILES['images']);
         //$width = imagesx($imgArray[0]);
 

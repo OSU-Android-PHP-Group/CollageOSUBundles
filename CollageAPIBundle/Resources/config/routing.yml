@@ -1,6 +1,3 @@
 image:
     type:     rest
     resource: OSU\CollageAPIBundle\Controller\ImageController
-imagepost:
-    pattern:  /imagepost
-    defaults: { _controller:OSUCollageAPIBundle:Image:postImage }
