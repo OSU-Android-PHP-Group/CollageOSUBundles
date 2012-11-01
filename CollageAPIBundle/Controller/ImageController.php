@@ -22,7 +22,11 @@ class ImageController extends Controller {
     public function getTestAction() {
         $proto = !empty($_SERVER['HTTPS']) ? "https" : "http";
         $host = $proto . '://' . $_SERVER['HTTP_HOST'];
-        $content = $this->renderView('OSUCollageAPIBundle:Image:post.html.twig', array('host' => $host));
+        $env = "";
+        if(in_array($this->get('kernel')->getEnvironment(), array('test', 'dev'))) {
+            $env = "/app_dev.php";
+        }
+        $content = $this->renderView('OSUCollageAPIBundle:Image:post.html.twig', array('host' => $host . $env));
         return new Response($content, 200, array('content-type' => 'text/html'));
     }
 
@@ -35,32 +39,32 @@ class ImageController extends Controller {
         //$resultImg = $this->compositeSimple($_FILES['images']['tmp_name'], 10);
         //$resultImg = $this->compositeImages($_FILES['images']['tmp_name']);
         //$resultImg = $this->testPop($_FILES['images']['tmp_name']);
+
         try {
             if (!(array_key_exists('images', $_FILES)) || (in_array( "", $_FILES['images']['tmp_name'])))
             {
-                throw new \Exception ("There was some problems uploading images.");
+                throw new \Exception("There was some problems uploading images.");
             }
 
-            // build $image_array
             $image_array = array();
             for ($i = 0; $i < count($_FILES['images']['tmp_name']); $i++) {
                 $image_array[$i] = array(
                     'tmp_name' => $_FILES['images']['tmp_name'][$i],
                     'name' => $_FILES['images']['name'][$i]
-                    );
+                );
             }
 
             $resultImg = $this->compositeWithTree($image_array);
-        } catch (\Exception $e){
-            return new Response($e->getMessage(), 400, array('content-type' => 'text/html'));
+
+            ob_start();
+            imagejpeg($resultImg);
+
+            $content = ob_get_contents();
+            ob_end_clean();
+            return new Response($content, 200, array('content-type' => 'image/jpeg'));
+        } catch (\Exception $e) {
+            return new Response($e->getMessage(), 200, array('content-type' => 'text/html'));
         }
-
-        ob_start();
-        imagejpeg($resultImg);
-
-        $content = ob_get_contents(); 
-        ob_end_clean();
-        return new Response($content, 200, array('content-type' => 'image/jpeg'));
 
     } 
 
@@ -117,10 +121,13 @@ class ImageController extends Controller {
     private function getImage($file_name, $target_width, $target_height) {
 
         try {
-            $img = imagecreatefromstring(file_get_contents($file_name));
+        $img = imagecreatefromstring(file_get_contents($file_name));
+        if (!$img) { throw new \Exception("Image type is not supported or image is corrupted.");};
         } catch (\Exception $e) {
-            return false;
+            throw new \Exception("Image type is not supported or image is corrupted.");
+            return;
         }
+
 
         list($width, $height) = getimagesize($file_name);
         $result = imagecreatetruecolor($target_width, $target_height);
@@ -137,21 +144,21 @@ class ImageController extends Controller {
         if ($tree["node_type"] == "box") {
             // Horizontal
             if ($tree["width"] > $tree["height"]) {
-                $this->Draw_Collage($tree["left"], $image_array, $canvas, $startx, $starty);
-                $this->Draw_Collage($tree["right"], $image_array, $canvas, $startx + $tree["left"]["width"], $starty);
+                $s1 = $this->Draw_Collage($tree["left"], $image_array, $canvas, $startx, $starty);
+                $s2 =$this->Draw_Collage($tree["right"], $image_array, $canvas, $startx + $tree["left"]["width"], $starty);
             } else {
                 // Vertical
-                $this->Draw_Collage($tree["left"], $image_array, $canvas, $startx, $starty);
-                $this->Draw_Collage($tree["right"], $image_array, $canvas, $startx, $starty + $tree["left"]["height"]);
+                $s1 = $this->Draw_Collage($tree["left"], $image_array, $canvas, $startx, $starty);
+                $s2 = $this->Draw_Collage($tree["right"], $image_array, $canvas, $startx, $starty + $tree["left"]["height"]);
+                if (!$s1 || !$s2) {
+                    return false;
+                }
             }
         } else { // image
             $pair= array_pop($image_array);
             $path = $pair['tmp_name'];
             $name = $pair['name'];
             $current_img = $this->getImage($path, $tree["width"], $tree["height"]);
-            if ($current_img == false) {
-                throw new \Exception("Image \"" . $name . "\" cannot be loaded.");
-            }
             $white = imagecolorallocate($current_img, 255, 255, 255);
             $gray = imagecolorallocate($current_img, 150, 150, 150);
 
@@ -170,6 +177,7 @@ class ImageController extends Controller {
             imagecopy($canvas, $current_img, $startx, $starty, 0, 0, imagesx($current_img), imagesy($current_img));
 
             //border
+            return true;
         }
     }
 
