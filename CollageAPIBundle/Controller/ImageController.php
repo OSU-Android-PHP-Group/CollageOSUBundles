@@ -63,7 +63,7 @@ class ImageController extends Controller {
             ob_end_clean();
             return new Response($content, 200, array('content-type' => 'image/jpeg'));
         } catch (\Exception $e) {
-            return new Response($e->getMessage(), 200, array('content-type' => 'text/html'));
+            return new Response($e->getMessage(), 400, array('content-type' => 'text/html'));
         }
 
     } 
